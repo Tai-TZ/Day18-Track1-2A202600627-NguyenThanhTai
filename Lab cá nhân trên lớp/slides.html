@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback trong Cursor — Day 18</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --yellow: #d29922;
+      --purple: #bc8cff;
+      --orange: #f0883e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .deck {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      padding: 48px 64px 80px;
+      opacity: 0;
+      transform: translateX(40px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .slide-number {
+      position: absolute;
+      top: 24px;
+      right: 32px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    h1 {
+      font-size: 2.6rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin-bottom: 28px;
+      color: var(--accent);
+    }
+
+    h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 1.25rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .meta {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-top: 24px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    .tag-user { background: rgba(88,166,255,0.15); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+    .tag-system { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+    .tag-explicit { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+    .tag-implicit { background: rgba(240,136,62,0.15); color: var(--orange); border: 1px solid rgba(240,136,62,0.3); }
+
+    /* Title slide */
+    .title-slide {
+      justify-content: center;
+      align-items: flex-start;
+      background: radial-gradient(ellipse at 20% 50%, rgba(88,166,255,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(188,140,255,0.06) 0%, transparent 50%);
+    }
+
+    .title-slide h1 { font-size: 3rem; }
+    .title-slide .accent-line {
+      width: 64px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--purple));
+      border-radius: 2px;
+      margin: 20px 0;
+    }
+
+    /* Grid layouts */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1; }
+    .grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 16px; flex: 1; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card li {
+      font-size: 0.9rem;
+      color: var(--muted);
+      padding-left: 16px;
+      position: relative;
+      line-height: 1.45;
+    }
+
+    .card li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-size: 0.8rem;
+    }
+
+    .card li strong { color: var(--text); }
+
+    /* Quadrant colors */
+    .q-user-explicit { border-top: 3px solid var(--accent); }
+    .q-user-implicit { border-top: 3px solid var(--orange); }
+    .q-system-explicit { border-top: 3px solid var(--green); }
+    .q-system-implicit { border-top: 3px solid var(--purple); }
+
+    .icon-blue { background: rgba(88,166,255,0.2); }
+    .icon-orange { background: rgba(240,136,62,0.2); }
+    .icon-green { background: rgba(63,185,80,0.2); }
+    .icon-purple { background: rgba(188,140,255,0.2); }
+
+    /* Table */
+    .table-wrap { flex: 1; overflow: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    td {
+      padding: 11px 16px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      vertical-align: top;
+      line-height: 1.45;
+    }
+    td strong { color: var(--text); }
+
+    /* Compare boxes */
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1; }
+    .compare-box {
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .compare-box.bad {
+      background: rgba(248,81,73,0.08);
+      border: 1px solid rgba(248,81,73,0.3);
+    }
+    .compare-box.good {
+      background: rgba(63,185,80,0.08);
+      border: 1px solid rgba(63,185,80,0.3);
+    }
+    .compare-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .compare-box.bad .compare-label { color: var(--red); }
+    .compare-box.good .compare-label { color: var(--green); }
+    .mock-ui {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 0.85rem;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      line-height: 1.6;
+    }
+
+    /* Summary */
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1; }
+    .summary-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+    }
+    .summary-item h4 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+    .summary-item.strength h4 { color: var(--green); }
+    .summary-item.weakness h4 { color: var(--yellow); }
+    .summary-item ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .summary-item li { font-size: 0.9rem; color: var(--muted); line-height: 1.45; }
+
+    .conclusion-box {
+      margin-top: 20px;
+      padding: 20px 24px;
+      background: linear-gradient(135deg, rgba(88,166,255,0.1), rgba(188,140,255,0.08));
+      border: 1px solid rgba(88,166,255,0.25);
+      border-radius: 12px;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    /* Principles row */
+    .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; flex: 1; }
+    .principle-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .principle-num {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--yellow);
+      line-height: 1;
+    }
+    .principle-title { font-weight: 600; font-size: 1rem; }
+    .principle-good { font-size: 0.85rem; color: var(--green); }
+    .principle-bad { font-size: 0.85rem; color: var(--red); }
+
+    /* Nav */
+    .nav {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 8px 20px;
+      z-index: 100;
+    }
+
+    .nav button {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .nav button:hover { background: var(--border); border-color: var(--accent); }
+    .nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .dots { display: flex; gap: 6px; }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .dot.active { background: var(--accent); transform: scale(1.3); }
+
+    .progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--purple));
+      transition: width 0.4s ease;
+      z-index: 200;
+    }
+
+    kbd {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.8rem;
+      font-family: inherit;
+    }
+
+    @media (max-width: 900px) {
+      .slide { padding: 32px 24px 80px; }
+      h1 { font-size: 1.8rem; }
+      h2 { font-size: 1.3rem; }
+      .grid-2, .grid-4, .compare, .summary-grid, .principles { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide title-slide active" data-index="0">
+    <div class="slide-number">1 / 8</div>
+    <div class="tag tag-user">Day 18 — AI in Action</div>
+    <h1>Hệ thống Feedback<br>trong sản phẩm <span style="color:var(--accent)">Cursor</span></h1>
+    <div class="accent-line"></div>
+    <p class="subtitle">Phân tích theo khung User ↔ System × Explicit ↔ Implicit</p>
+    <p class="meta">Nguyễn Thành Tài &nbsp;·&nbsp; 2A202600627 &nbsp;·&nbsp; Track 1</p>
+  </div>
+
+  <!-- SLIDE 2: Framework -->
+  <div class="slide" data-index="1">
+    <div class="slide-number">2 / 8</div>
+    <h2>Khung phân tích — 4 ô Feedback</h2>
+    <div class="grid-4">
+      <div class="card q-user-explicit">
+        <div class="card-header">
+          <div class="card-icon icon-blue">👤</div>
+          <div>
+            <div>User · Explicit</div>
+            <div style="font-size:0.8rem;color:var(--muted);font-weight:400">Phản hồi tường minh từ người dùng</div>
+          </div>
+        </div>
+        <ul>
+          <li><strong>👍/👎</strong> Thumbs Up / Down</li>
+          <li><strong>Accept/Reject</strong> diff code</li>
+          <li><strong>Rules & Memories</strong> — dạy AI lâu dài</li>
+        </ul>
+      </div>
+      <div class="card q-user-implicit">
+        <div class="card-header">
+          <div class="card-icon icon-orange">👤</div>
+          <div>
+            <div>User · Implicit</div>
+            <div style="font-size:0.8rem;color:var(--muted);font-weight:400">Hành vi tự nhiên, không bấm nút</div>
+          </div>
+        </div>
+        <ul>
+          <li><strong>Tab/Esc</strong> autocomplete</li>
+          <li><strong>Copy code</strong>, sửa tay sau Accept</li>
+          <li><strong>Bỏ qua</strong> kết quả, prompt mới</li>
+        </ul>
+      </div>
+      <div class="card q-system-explicit">
+        <div class="card-header">
+          <div class="card-icon icon-green">⚙️</div>
+          <div>
+            <div>System · Explicit</div>
+            <div style="font-size:0.8rem;color:var(--muted);font-weight:400">Hệ thống chủ động hiển thị</div>
+          </div>
+        </div>
+        <ul>
+          <li><strong>Progress:</strong> "Thinking...", "Searching..."</li>
+          <li><strong>@context</strong> — file nào được đọc</li>
+          <li><strong>Diff preview</strong> trước khi ghi code</li>
+        </ul>
+      </div>
+      <div class="card q-system-implicit">
+        <div class="card-header">
+          <div class="card-icon icon-purple">⚙️</div>
+          <div>
+            <div>System · Implicit</div>
+            <div style="font-size:0.8rem;color:var(--muted);font-weight:400">Thiết kế UI, không cần chữ</div>
+          </div>
+        </div>
+        <ul>
+          <li><strong>Streaming speed</strong> — task khó = delay lâu</li>
+          <li><strong>Inline edit</strong> che mờ code xung quanh</li>
+          <li><strong>Layout</strong> Chat vs Composer khác nhau</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Explicit User -->
+  <div class="slide" data-index="2">
+    <div class="slide-number">3 / 8</div>
+    <span class="tag tag-user">User Feedback</span>
+    <span class="tag tag-explicit">Explicit</span>
+    <h2 style="margin-top:12px">Phản hồi tường minh từ người dùng</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Đánh giá nhanh</h3>
+        <ul>
+          <li><strong>Binary:</strong> 👍 / 👎 dưới mỗi câu trả lời Chat/Composer</li>
+          <li><strong>Single-action:</strong> nút Regenerate khi kết quả chưa đạt</li>
+        </ul>
+        <h3 style="margin-top:8px">Lựa chọn & gợi ý</h3>
+        <ul>
+          <li>Chọn model, mode <strong>Agent / Ask / Manual</strong></li>
+          <li>Nút <strong>Apply</strong>, <strong>Add to Composer</strong></li>
+          <li>Câu hỏi follow-up gợi ý sẵn</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Làm rõ & phản hồi sâu</h3>
+        <ul>
+          <li><strong>Accept / Reject</strong> diff — <kbd>Ctrl+K</kbd></li>
+          <li>Sửa lại prompt sau khi kết quả sai</li>
+          <li>Agent hỏi lại khi yêu cầu chưa rõ</li>
+          <li><strong>Rules</strong> (.cursor/rules) & <strong>Memories</strong></li>
+        </ul>
+        <div class="mock-ui" style="margin-top:8px">
+          <span style="color:var(--red)">- session.login(user)</span><br>
+          <span style="color:var(--green)">+ jwt.verify(token)</span><br>
+          <span style="color:var(--muted)">[Reject] → "Dùng JWT, không session"</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Implicit User -->
+  <div class="slide" data-index="3">
+    <div class="slide-number">4 / 8</div>
+    <span class="tag tag-user">User Feedback</span>
+    <span class="tag tag-implicit">Implicit</span>
+    <h2 style="margin-top:12px">Phản hồi ngầm định từ người dùng</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40%">Hành vi</th>
+            <th style="width:60%">Tín hiệu ngầm</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Tab</strong> chấp nhận autocomplete</td>
+            <td>Gợi ý inline phù hợp → positive signal</td>
+          </tr>
+          <tr>
+            <td><strong>Esc</strong> / gõ đè autocomplete</td>
+            <td>Gợi ý không phù hợp → negative signal</td>
+          </tr>
+          <tr>
+            <td><strong>Copy code</strong> từ Chat (không Apply)</td>
+            <td>Code có giá trị, flow Apply chưa tối ưu</td>
+          </tr>
+          <tr>
+            <td><strong>Accept</strong> rồi sửa tay ngay</td>
+            <td>Đúng hướng, sai convention / style</td>
+          </tr>
+          <tr>
+            <td><strong>Accept</strong> → chạy test → fail</td>
+            <td>Syntax OK, logic sai — tín hiệu mạnh nhất</td>
+          </tr>
+          <tr>
+            <td>Bỏ qua kết quả, <strong>prompt mới</strong></td>
+            <td>Câu trả lời trước không hữu ích</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: System Feedback -->
+  <div class="slide" data-index="4">
+    <div class="slide-number">5 / 8</div>
+    <span class="tag tag-system">System Feedback</span>
+    <h2 style="margin-top:12px">Phản hồi từ hệ thống</h2>
+    <div class="grid-2">
+      <div class="card q-system-explicit">
+        <div class="card-header">
+          <div class="card-icon icon-green">💬</div>
+          <div>Explicit — Chủ động hiển thị</div>
+        </div>
+        <ul>
+          <li><strong>Progress:</strong> "Thinking...", "Searching codebase...", "Reading 4 files..."</li>
+          <li><strong>@context:</strong> hiển thị file nào được dùng làm nguồn</li>
+          <li><strong>Diff preview</strong> đỏ/xanh trước khi ghi vào repo</li>
+          <li>Cảnh báo quota, Privacy Mode, model đang dùng</li>
+        </ul>
+        <div class="mock-ui">
+          🔍 Searching codebase...<br>
+          📄 Read: auth.service.ts<br>
+          📄 Read: user.controller.ts<br>
+          ✍️ Generating fix...
+        </div>
+      </div>
+      <div class="card q-system-implicit">
+        <div class="card-header">
+          <div class="card-icon icon-purple">🎨</div>
+          <div>Implicit — Qua thiết kế UI</div>
+        </div>
+        <ul>
+          <li><strong>Streaming nhanh</strong> → AI viết real-time</li>
+          <li><strong>Delay lâu</strong> trước stream → task phức tạp</li>
+          <li><strong>Inline edit</strong> che mờ → phạm vi chỉ vùng chọn</li>
+          <li><strong>Chat vs Composer</strong> layout khác → mental model khác</li>
+          <li><strong>Autocomplete mờ</strong> + Tab → gợi ý nhẹ, user kiểm soát</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: 3 Principles -->
+  <div class="slide" data-index="5">
+    <div class="slide-number">6 / 8</div>
+    <h2>3 nguyên tắc thu thập feedback hiệu quả</h2>
+    <p style="color:var(--muted);margin-bottom:20px;font-size:0.95rem">
+      "Thu thập feedback đúng cách → AI học nhanh hơn, user cảm thấy được lắng nghe"
+    </p>
+    <div class="principles">
+      <div class="principle-card">
+        <div class="principle-num">01</div>
+        <div class="principle-title">Make it easy</div>
+        <div class="principle-good">✅ Thumbs inline, Accept/Reject ngay trên diff</div>
+        <div class="principle-bad">❌ Thumbs down không mở hộp "vì sao?"</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-num">02</div>
+        <div class="principle-title">Tạo động lực cho user</div>
+        <div class="principle-good">✅ Rules/Memories giúp AI nhớ preference</div>
+        <div class="principle-bad">❌ Không giải thích feedback cải thiện gì</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-num">03</div>
+        <div class="principle-title">Giải thích cách dùng feedback</div>
+        <div class="principle-good">✅ @context minh bạch nguồn dữ liệu</div>
+        <div class="principle-bad">❌ Không nói feedback có train model không</div>
+      </div>
+    </div>
+    <div class="compare" style="margin-top:20px;flex:none">
+      <div class="compare-box bad">
+        <div class="compare-label">❌ Don't</div>
+        <div class="mock-ui">[👍] [👎]<br><span style="color:var(--muted)">→ User không biết bấm để làm gì</span></div>
+      </div>
+      <div class="compare-box good">
+        <div class="compare-label">✅ Do</div>
+        <div class="mock-ui">[👍 Hữu ích] [👎 Sai logic]<br><span style="color:var(--green)">"Cải thiện gợi ý cho project này"</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Summary -->
+  <div class="slide" data-index="6">
+    <div class="slide-number">7 / 8</div>
+    <h2>Tổng kết & đề xuất cải tiến</h2>
+    <div class="summary-grid">
+      <div class="summary-item strength">
+        <h4>✅ Điểm mạnh</h4>
+        <ul>
+          <li>Explicit System Feedback xuất sắc (@context, progress, diff)</li>
+          <li>Accept/Reject kiểm soát chặt trước khi ghi code</li>
+          <li>Implicit loop phong phú: autocomplete, copy, sửa tay, test fail</li>
+        </ul>
+      </div>
+      <div class="summary-item weakness">
+        <h4>⚠️ Cần cải thiện</h4>
+        <ul>
+          <li>Nối Implicit → Explicit khi test fail</li>
+          <li>Thumbs Down + tag: "Sai logic", "Sai convention"</li>
+          <li>Transparency: feedback dùng để làm gì?</li>
+          <li>Motivation copy cho developer</li>
+        </ul>
+      </div>
+    </div>
+    <div class="conclusion-box">
+      <strong>Trade-off:</strong> Cursor ưu tiên <em>kiểm soát & an toàn</em> hơn <em>thu feedback nhanh</em> — hợp lý với developer vì sai code tốn kém hơn sai gợi ý. Cải tiến lớn nhất: <strong>đóng vòng Implicit → Explicit</strong>.
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Conclusion -->
+  <div class="slide title-slide" data-index="7">
+    <div class="slide-number">8 / 8</div>
+    <h2 style="color:var(--text);margin-bottom:20px">Kết luận</h2>
+    <div class="conclusion-box" style="max-width:720px;font-size:1.1rem">
+      Cursor feedback <strong style="color:var(--green)">mạnh ở kiểm soát</strong> (Accept/Reject, @context, diff preview) nhưng <strong style="color:var(--yellow)">yếu ở động lực & minh bạch</strong> (thumbs up/down).
+    </div>
+    <div style="margin-top:32px;display:flex;flex-direction:column;gap:12px">
+      <div class="tag tag-user">User Explicit → 👍/👎 · Accept/Reject · Rules</div>
+      <div class="tag tag-implicit" style="background:rgba(240,136,62,0.15);color:var(--orange);border:1px solid rgba(240,136,62,0.3)">User Implicit → Tab/Esc · Copy · Sửa tay</div>
+      <div class="tag tag-system">System Explicit → Progress · @context · Diff</div>
+      <div class="tag tag-implicit" style="background:rgba(188,140,255,0.15);color:var(--purple);border:1px solid rgba(188,140,255,0.3)">System Implicit → Streaming · UI layout</div>
+    </div>
+    <p class="meta" style="margin-top:40px">Nguyễn Thành Tài · 2A202600627 · Day 18 Track 1</p>
+  </div>
+
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button id="prevBtn" title="Trước (←)">←</button>
+  <div class="dots" id="dots"></div>
+  <button id="nextBtn" title="Sau (→)">→</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let current = 0;
+
+  const dotsContainer = document.getElementById('dots');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const progressBar = document.getElementById('progressBar');
+
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => goTo(i));
+    dotsContainer.appendChild(dot);
+  });
+
+  const dots = document.querySelectorAll('.dot');
+
+  function goTo(index) {
+    if (index < 0 || index >= total) return;
+    slides[current].classList.remove('active');
+    dots[current].classList.remove('active');
+    current = index;
+    slides[current].classList.add('active');
+    dots[current].classList.add('active');
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === total - 1;
+    progressBar.style.width = ((current + 1) / total * 100) + '%';
+  }
+
+  prevBtn.addEventListener('click', () => goTo(current - 1));
+  nextBtn.addEventListener('click', () => goTo(current + 1));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      goTo(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      goTo(current - 1);
+    } else if (e.key === 'Home') {
+      goTo(0);
+    } else if (e.key === 'End') {
+      goTo(total - 1);
+    }
+  });
+
+  goTo(0);
+</script>
+</body>
+</html>

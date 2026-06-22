@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TripMind AI — Day 18 Prototype</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --surface: #ffffff;
+      --border: #dde3ea;
+      --text: #1a2332;
+      --muted: #5c6b7a;
+      --primary: #0d7ea8;
+      --primary-light: #e8f4f8;
+      --accent: #f59e0b;
+      --green: #059669;
+      --red: #dc2626;
+      --yellow: #d97706;
+      --purple: #7c3aed;
+      --sidebar: #0f2942;
+      --sidebar-text: #b8c9d9;
+      --radius: 12px;
+      --shadow: 0 2px 12px rgba(15,41,66,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px; background: var(--sidebar); color: var(--sidebar-text);
+      padding: 20px 0; flex-shrink: 0; overflow-y: auto; position: fixed; height: 100vh; z-index: 100;
+    }
+    .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px; }
+    .sidebar-logo h1 { color: #fff; font-size: 1.2rem; }
+    .sidebar-logo p { font-size: 0.75rem; margin-top: 4px; opacity: 0.7; }
+    .nav-group { padding: 8px 12px; }
+    .nav-group-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.5; padding: 8px 8px 4px; }
+    .nav-btn {
+      display: block; width: 100%; text-align: left; padding: 10px 12px; border: none; background: none;
+      color: var(--sidebar-text); border-radius: 8px; cursor: pointer; font-size: 0.85rem; margin-bottom: 2px;
+      transition: background 0.15s;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .nav-btn.active { background: var(--primary); color: #fff; }
+    .nav-btn .tag { font-size: 0.65rem; opacity: 0.7; margin-left: 4px; }
+
+    /* Main */
+    .main { margin-left: 260px; flex: 1; padding: 24px 32px 48px; min-height: 100vh; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .section-header { margin-bottom: 24px; }
+    .section-header h2 { font-size: 1.5rem; color: var(--primary); }
+    .section-header p { color: var(--muted); margin-top: 6px; font-size: 0.9rem; }
+
+    /* Phone mockup */
+    .phone-wrap { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+    .phone {
+      width: 375px; background: var(--surface); border-radius: 24px; box-shadow: var(--shadow);
+      border: 1px solid var(--border); overflow: hidden; flex-shrink: 0;
+    }
+    .phone-status { background: var(--primary); color: #fff; padding: 12px 16px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .phone-body { padding: 16px; min-height: 520px; display: flex; flex-direction: column; }
+
+    /* Rationale panel */
+    .rationale {
+      flex: 1; min-width: 280px; max-width: 400px; background: #fffbeb; border: 1px solid #fcd34d;
+      border-radius: var(--radius); padding: 16px; font-size: 0.85rem; line-height: 1.55;
+    }
+    .rationale h4 { color: var(--yellow); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .rationale ul { list-style: none; }
+    .rationale li { margin-bottom: 8px; padding-left: 14px; position: relative; color: #78350f; }
+    .rationale li::before { content: '→'; position: absolute; left: 0; color: var(--accent); }
+    .rationale strong { color: #92400e; }
+
+    /* UI components */
+    .btn {
+      padding: 10px 18px; border-radius: 8px; border: none; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: var(--primary-light); color: var(--primary); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-danger { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
+    .btn-success { background: #ecfdf5; color: var(--green); border: 1px solid #a7f3d0; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 16px; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .chip {
+      padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface);
+      font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--primary); }
+    .chip.selected { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin: 12px 0; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--primary); border-radius: 2px; transition: width 0.3s; }
+
+    .card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+    .card.selected { border-color: var(--primary); background: var(--primary-light); }
+    .card h4 { font-size: 0.95rem; margin-bottom: 4px; }
+    .card p { font-size: 0.8rem; color: var(--muted); }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; }
+    .badge-green { background: #d1fae5; color: var(--green); }
+    .badge-yellow { background: #fef3c7; color: var(--yellow); }
+    .badge-red { background: #fee2e2; color: var(--red); }
+    .badge-blue { background: var(--primary-light); color: var(--primary); }
+
+    .ai-msg { background: var(--primary-light); border-radius: 12px 12px 12px 4px; padding: 12px; margin-bottom: 12px; font-size: 0.9rem; line-height: 1.5; }
+    .ai-msg small { display: block; color: var(--muted); font-size: 0.75rem; margin-top: 6px; }
+
+    .timeline-item { display: flex; gap: 10px; margin-bottom: 10px; font-size: 0.85rem; }
+    .timeline-time { color: var(--primary); font-weight: 600; min-width: 48px; }
+    .timeline-item.warn { background: #fffbeb; border-left: 3px solid var(--yellow); padding: 6px 8px; border-radius: 0 6px 6px 0; }
+
+    .slider-row { margin: 12px 0; }
+    .slider-row label { font-size: 0.8rem; color: var(--muted); display: flex; justify-content: space-between; }
+    .slider-row input[type=range] { width: 100%; margin-top: 4px; accent-color: var(--primary); }
+
+    .feedback-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .feedback-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 0.85rem; }
+    .feedback-btn.active-up { background: #ecfdf5; border-color: var(--green); }
+    .feedback-btn.active-down { background: #fef2f2; border-color: var(--red); }
+
+    .tag-picker { display: none; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag-picker.show { display: flex; }
+    .tag-btn { padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border); background: #fff; font-size: 0.75rem; cursor: pointer; }
+    .tag-btn.selected { background: var(--red); color: #fff; border-color: var(--red); }
+
+    .screen { display: none; flex-direction: column; flex: 1; }
+    .screen.active { display: flex; }
+
+    .explain-box { background: #f5f3ff; border: 1px solid #c4b5fd; border-radius: 8px; padding: 10px; margin-top: 10px; font-size: 0.8rem; }
+    .explain-box strong { color: var(--purple); }
+
+    .agency-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 16px 0; }
+    .agency-table th, .agency-table td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; }
+    .agency-table th { background: var(--primary-light); color: var(--primary); }
+    .act { color: var(--green); font-weight: 600; }
+    .ask { color: var(--yellow); font-weight: 600; }
+    .dont { color: var(--red); font-weight: 600; }
+
+    /* Flow map */
+    .flow-map { display: flex; flex-direction: column; gap: 0; max-width: 700px; }
+    .flow-step {
+      display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+      background: var(--surface); border: 1px solid var(--border); cursor: pointer; transition: border-color 0.15s;
+    }
+    .flow-step:hover { border-color: var(--primary); }
+    .flow-step:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+    .flow-step:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+    .flow-num { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+    .flow-arrow { text-align: center; color: var(--muted); padding: 4px; }
+
+    /* Matrix */
+    .matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 900px; }
+    .matrix-cell { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .matrix-cell h4 { font-size: 0.8rem; margin-bottom: 10px; }
+    .matrix-cell.user-explicit { border-top: 3px solid var(--primary); }
+    .matrix-cell.user-implicit { border-top: 3px solid var(--accent); }
+    .matrix-cell.sys-explicit { border-top: 3px solid var(--green); }
+    .matrix-cell.sys-implicit { border-top: 3px solid var(--purple); }
+
+    .demo-steps { counter-reset: demo; max-width: 700px; }
+    .demo-step { display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .demo-step:hover { background: var(--primary-light); margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: 8px; }
+    .demo-num { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
+    .demo-time { color: var(--muted); font-size: 0.8rem; min-width: 50px; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--sidebar); color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; opacity: 0; transition: opacity 0.3s; z-index: 200; }
+    .toast.show { opacity: 1; }
+
+    .implicit-badge {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 0.65rem; padding: 3px 8px;
+      border-radius: 6px; background: #fef3c7; color: #92400e; border: 1px dashed var(--accent);
+      margin: 6px 0; cursor: help;
+    }
+    .label-fact { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #dbeafe; color: #1d4ed8; font-weight: 600; }
+    .label-inference { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #f3e8ff; color: #7c3aed; font-weight: 600; }
+    .label-draft { font-size: 0.7rem; padding: 3px 10px; border-radius: 12px; background: #fef3c7; color: var(--yellow); font-weight: 600; }
+    .label-confirmed { font-size: 0.7rem; padding: 3px 10px; border-radius: 12px; background: #d1fae5; color: var(--green); font-weight: 600; }
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; font-size: 0.75rem; }
+    .compare-col { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .compare-col.after { border-color: var(--green); background: #ecfdf5; }
+    .compare-col h5 { font-size: 0.7rem; margin-bottom: 6px; color: var(--muted); text-transform: uppercase; }
+    .matrix-detail { font-size: 0.78rem; line-height: 1.5; color: var(--muted); margin-top: 10px; }
+    .matrix-detail dt { font-weight: 600; color: var(--text); margin-top: 6px; }
+    .perm-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .toggle { width: 40px; height: 22px; background: var(--border); border-radius: 11px; position: relative; cursor: pointer; }
+    .toggle.on { background: var(--primary); }
+    .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: left 0.2s; }
+    .toggle.on::after { left: 20px; }
+    .agency-label { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+    .agency-label.act { background: #d1fae5; color: var(--green); }
+    .agency-label.ask { background: #fef3c7; color: var(--yellow); }
+
+    @media (max-width: 900px) {
+      .sidebar { width: 100%; height: auto; position: relative; }
+      .main { margin-left: 0; }
+      body { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>✈️ TripMind AI</h1>
+    <p>Day 18 Prototype · 2A202600627</p>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Tổng quan</div>
+    <button class="nav-btn active" data-section="flowmap">00 — Flow Map</button>
+    <button class="nav-btn" data-section="demo">07 — Demo 5 phút</button>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Giai đoạn A — Onboarding</div>
+    <button class="nav-btn" data-section="t0">01 — T0 Onboarding</button>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Giai đoạn B — Trong hành động</div>
+    <button class="nav-btn" data-section="t2">02 — T2 Hỏi & Lập kế hoạch</button>
+    <button class="nav-btn" data-section="t4">02b — T4 Nhiều phương án</button>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Giai đoạn C — Sau kết quả</div>
+    <button class="nav-btn" data-section="treview">03 — Review lịch trình</button>
+    <button class="nav-btn" data-section="t3">04 — T3 Chọn khách sạn</button>
+    <button class="nav-btn" data-section="t9">06 — T9 Đặt dịch vụ</button>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Giai đoạn D — Recovery</div>
+    <button class="nav-btn" data-section="t6">05 — T6 Lịch quá dày</button>
+    <button class="nav-btn" data-section="t7">05b — T7 Info lỗi thời</button>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-title">Phân tích</div>
+    <button class="nav-btn" data-section="feedback">05 — Feedback 2×2</button>
+    <button class="nav-btn" data-section="rationale">06 — Design Rationale</button>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- 00 FLOW MAP -->
+  <section class="section active" id="sec-flowmap">
+    <div class="section-header">
+      <h2>00 — Flow Map & Phạm vi</h2>
+      <p>Lát cắt: AI tạo và điều chỉnh lịch trình Đà Nẵng 3N2Đ</p>
+    </div>
+    <div class="flow-map">
+      <div class="flow-step" onclick="go('t0')"><div class="flow-num">A</div><div><strong>T0 — Onboarding</strong><br><span style="color:var(--muted);font-size:0.85rem">Hiểu AI làm gì, không làm gì, bắt đầu từ đâu</span></div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step" onclick="go('t2')"><div class="flow-num">B</div><div><strong>T2 — Hỏi & Lập kế hoạch</strong><br><span style="color:var(--muted);font-size:0.85rem">AI Ask: thu thập ngữ cảnh từng bước</span></div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step" onclick="go('t4')"><div class="flow-num">B2</div><div><strong>T4 — Nhiều phương án lịch trình</strong><br><span style="color:var(--muted);font-size:0.85rem">Không chỉ 1 lựa chọn "tối ưu"</span></div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step" onclick="go('treview')"><div class="flow-num">C</div><div><strong>Review lịch trình</strong><br><span style="color:var(--muted);font-size:0.85rem">Dữ liệu vs AI đề xuất · Nháp · Chấp nhận/Hoàn tác</span></div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step" onclick="go('t3')"><div class="flow-num">C2</div><div><strong>T3 — Chọn khách sạn</strong><br><span style="color:var(--muted);font-size:0.85rem">Explainability: tiêu chí xếp hạng</span></div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step" onclick="go('t6')"><div class="flow-num">D</div><div><strong>T6/T7 — Sai sót & Khôi phục</strong><br><span style="color:var(--muted);font-size:0.85rem">So sánh trước/sau · Info lỗi thời</span></div></div>
+      <div class="flow-arrow">↺</div>
+      <div class="flow-step" onclick="go('t9')"><div class="flow-num">E</div><div><strong>T9 — Đặt dịch vụ</strong><br><span style="color:var(--muted);font-size:0.85rem">Act / Ask / Don't Act</span></div></div>
+    </div>
+    <div class="rationale" style="margin-top:24px;max-width:700px">
+      <h4>Phạm vi KHÔNG bao gồm</h4>
+      <ul>
+        <li>Toàn bộ app du lịch (vé máy bay, visa, bảo hiểm...)</li>
+        <li>Chatbot chung chung — mọi flow có trạng thái, quyền kiểm soát, recovery</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 07 DEMO -->
+  <section class="section" id="sec-demo">
+    <div class="section-header">
+      <h2>07 — Demo Path (5 phút)</h2>
+      <p>Click từng bước để nhảy tới kịch bản</p>
+    </div>
+    <div class="demo-steps">
+      <div class="demo-step" onclick="go('flowmap')"><div class="demo-num">1</div><div class="demo-time">0:30</div><div><strong>Flow Map</strong> — phạm vi lát cắt</div></div>
+      <div class="demo-step" onclick="go('t0')"><div class="demo-num">2</div><div class="demo-time">0:45</div><div><strong>T0 Onboarding</strong> — kỳ vọng AI</div></div>
+      <div class="demo-step" onclick="go('t2')"><div class="demo-num">3</div><div class="demo-time">0:50</div><div><strong>T2 Planning</strong> — AI hỏi từng bước (Ask)</div></div>
+      <div class="demo-step" onclick="go('t4')"><div class="demo-num">4</div><div class="demo-time">0:40</div><div><strong>T4</strong> — nhiều phương án lịch trình</div></div>
+      <div class="demo-step" onclick="go('treview')"><div class="demo-num">5</div><div class="demo-time">0:50</div><div><strong>Review</strong> — dữ liệu vs đề xuất, nháp, hoàn tác</div></div>
+      <div class="demo-step" onclick="go('t3')"><div class="demo-num">6</div><div class="demo-time">0:40</div><div><strong>T3 Hotels</strong> — "Vì sao gợi ý này?"</div></div>
+      <div class="demo-step" onclick="go('t6')"><div class="demo-num">7</div><div class="demo-time">0:50</div><div><strong>T6 Recovery</strong> — so sánh trước/sau</div></div>
+      <div class="demo-step" onclick="go('t7')"><div class="demo-num">8</div><div class="demo-time">0:30</div><div><strong>T7 Recovery</strong> — info lỗi thời</div></div>
+      <div class="demo-step" onclick="go('feedback')"><div class="demo-num">9</div><div class="demo-time">0:40</div><div><strong>Feedback 2×2</strong> — rationale đủ 8 câu/ô</div></div>
+      <div class="demo-step" onclick="go('t9')"><div class="demo-num">10</div><div class="demo-time">0:10</div><div><strong>T9 Booking</strong> — Don't Act thanh toán</div></div>
+    </div>
+  </section>
+
+  <!-- T0 ONBOARDING -->
+  <section class="section" id="sec-t0">
+    <div class="section-header">
+      <h2>01 — T0: Onboarding lần đầu</h2>
+      <p>Giai đoạn A — Thiết lập kỳ vọng, không biến thành form dài</p>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-status">✈️ TripMind AI</div>
+        <div class="phone-body" id="t0-body">
+          <div class="screen active" data-t0="0">
+            <h3 style="margin-bottom:12px">Chào bạn! 👋</h3>
+            <p style="color:var(--muted);font-size:0.9rem;margin-bottom:16px">TripMind giúp bạn lập lịch trình du lịch thông minh.</p>
+            <div class="card"><h4>✅ AI có thể</h4><p>Gợi ý lịch trình, khách sạn, nhà hàng theo sở thích</p></div>
+            <div class="card"><h4>❌ AI không tự</h4><p>Đặt phòng, thanh toán, hủy booking thay bạn</p></div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="t0Next()">Tiếp tục →</button></div>
+          </div>
+          <div class="screen" data-t0="1">
+            <h3 style="margin-bottom:12px">Bạn kiểm soát mọi quyết định</h3>
+            <p style="color:var(--muted);font-size:0.9rem;margin-bottom:16px">AI đề xuất — bạn chọn, sửa, từ chối, hoàn tác bất cứ lúc nào.</p>
+            <div class="card"><h4>🔒 Dữ liệu & quyền riêng tư</h4><p>Chỉ dùng để cải thiện gợi ý cho bạn. Không chia sẻ bên ngoài.</p></div>
+            <div class="btn-row"><button class="btn btn-outline" onclick="t0Prev()">←</button><button class="btn btn-primary" onclick="t0Next()">Tiếp tục →</button></div>
+          </div>
+          <div class="screen" data-t0="2">
+            <h3 style="margin-bottom:8px">Quyền truy cập (tùy chọn)</h3>
+            <p style="color:var(--muted);font-size:0.85rem;margin-bottom:12px">Bật để AI gợi ý chính xác hơn — có thể bỏ qua hoặc rút quyền sau</p>
+            <div class="perm-row"><span>📍 Vị trí (gợi ý gần bạn)</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+            <div class="perm-row"><span>📅 Lịch cá nhân (tránh trùng ngày)</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+            <div class="perm-row" style="border:none"><span>⭐ Sở thích đã lưu</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="btn-row">
+              <button class="btn btn-outline" onclick="t0Prev()">←</button>
+              <button class="btn btn-outline" onclick="t0SkipPerm()">Bỏ qua — không chia sẻ</button>
+              <button class="btn btn-primary" onclick="t0Next()">Tiếp tục →</button>
+            </div>
+          </div>
+          <div class="screen" data-t0="3">
+            <h3 style="margin-bottom:8px">Chuyến đi của bạn kiểu gì?</h3>
+            <p style="color:var(--muted);font-size:0.85rem;margin-bottom:8px">Chọn 1 để AI hiểu hướng gợi ý (không bắt buộc điền form)</p>
+            <div class="chips" id="t0-style">
+              <div class="chip" onclick="selectChip(this,'t0-style')">🏖️ Nghỉ dưỡng biển</div>
+              <div class="chip" onclick="selectChip(this,'t0-style')">🏛️ Khám phá văn hóa</div>
+              <div class="chip" onclick="selectChip(this,'t0-style')">🍜 Ẩm thực</div>
+              <div class="chip" onclick="selectChip(this,'t0-style')">💰 Tiết kiệm</div>
+              <div class="chip" onclick="selectChip(this,'t0-style')">👨‍👩‍👧 Gia đình</div>
+            </div>
+            <div class="btn-row"><button class="btn btn-outline" onclick="t0Prev()">←</button><button class="btn btn-primary" onclick="t0Finish()">Bắt đầu lập kế hoạch →</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="rationale">
+        <h4>Design Rationale — T0 (10 câu)</h4>
+        <ul>
+          <li><strong>AI biết:</strong> Chưa gì về user</li>
+          <li><strong>AI chưa biết:</strong> Style, ngân sách, quyền dữ liệu user cho phép</li>
+          <li><strong>Giả định:</strong> User muốn lập lịch nhanh, không muốn form dài</li>
+          <li><strong>Có thể sai:</strong> User tưởng AI tự đặt phòng/thanh toán</li>
+          <li><strong>Hậu quả:</strong> Thất vọng, mất niềm tin — user chịu ảnh hưởng trực tiếp</li>
+          <li><strong>Phát hiện/hoàn tác:</strong> Dễ — chưa có hành động nào để hoàn tác</li>
+          <li><strong>Don't Act:</strong> Không thu thập dữ liệu khi user bấm "Bỏ qua"</li>
+          <li><strong>User kiểm soát:</strong> Bỏ qua quyền, chọn style, rút quyền sau (Cài đặt)</li>
+          <li><strong>Feedback:</strong> Chọn style = explicit user; bỏ qua perm = implicit (chưa sẵn sàng chia sẻ)</li>
+          <li><strong>Tiếp tục mục tiêu:</strong> 3 bước ngắn → vào lập kế hoạch ngay, không mắc kẹt onboarding</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- T2 PLANNING -->
+  <section class="section" id="sec-t2">
+    <div class="section-header">
+      <h2>02 — T2: Hỏi thêm trước khi lập kế hoạch</h2>
+      <p>Giai đoạn B — Ask: thu thập 4 thông tin quan trọng nhất</p>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-status">📍 Đang lập kế hoạch Đà Nẵng</div>
+        <div class="phone-body" id="t2-body">
+          <div class="progress-bar"><div class="progress-fill" id="t2-progress" style="width:0%"></div></div>
+          <small style="color:var(--muted)" id="t2-step-label">Bước 0/4</small>
+          <div class="screen active" data-t2="0">
+            <div class="ai-msg">Bạn muốn đi <strong>Đà Nẵng</strong> — tuyệt! Để tạo lịch phù hợp, tôi cần hỏi vài điều. Mỗi câu giúp lịch trình chính xác hơn.<small>💡 Tôi sẽ không tự quyết thay bạn</small></div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="t2Next()">Bắt đầu →</button></div>
+          </div>
+          <div class="screen" data-t2="1">
+            <div class="ai-msg">📅 <strong>Đi bao lâu?</strong><small>Cần biết để phân bổ hoạt động mỗi ngày hợp lý</small></div>
+            <div class="chips" id="t2-days"><div class="chip" onclick="selectChip(this,'t2-days');t2Enable()">2N1Đ</div><div class="chip" onclick="selectChip(this,'t2-days');t2Enable()">3N2Đ</div><div class="chip" onclick="selectChip(this,'t2-days');t2Enable()">4N3Đ</div><div class="chip" onclick="selectChip(this,'t2-days');t2Enable()">5N4Đ+</div></div>
+            <div class="btn-row"><button class="btn btn-primary" id="t2-btn-1" disabled onclick="t2Next()">Tiếp →</button></div>
+          </div>
+          <div class="screen" data-t2="2">
+            <div class="ai-msg">👥 <strong>Đi với ai?</strong><small>Ảnh hưởng loại khách sạn & hoạt động</small></div>
+            <div class="chips" id="t2-who"><div class="chip" onclick="selectChip(this,'t2-who');t2Enable()">Một mình</div><div class="chip" onclick="selectChip(this,'t2-who');t2Enable()">Cặp đôi</div><div class="chip" onclick="selectChip(this,'t2-who');t2Enable()">Gia đình có trẻ</div><div class="chip" onclick="selectChip(this,'t2-who');t2Enable()">Nhóm bạn</div></div>
+            <div class="btn-row"><button class="btn btn-primary" id="t2-btn-2" disabled onclick="t2Next()">Tiếp →</button></div>
+          </div>
+          <div class="screen" data-t2="3">
+            <div class="ai-msg">💰 <strong>Ngân sách khách sạn/đêm?</strong><small>Để lọc gợi ý phù hợp túi tiền</small></div>
+            <div class="chips" id="t2-budget"><div class="chip" onclick="selectChip(this,'t2-budget');t2Enable()">&lt; 500K</div><div class="chip" onclick="selectChip(this,'t2-budget');t2Enable()">500K–1M</div><div class="chip" onclick="selectChip(this,'t2-budget');t2Enable()">1M–2M</div><div class="chip" onclick="selectChip(this,'t2-budget');t2Enable()">&gt; 2M</div></div>
+            <div class="btn-row"><button class="btn btn-primary" id="t2-btn-3" disabled onclick="t2Next()">Tiếp →</button></div>
+          </div>
+          <div class="screen" data-t2="4">
+            <div class="ai-msg">🎯 <strong>Ưu tiên gì nhất?</strong><small>Quyết định cách sắp lịch mỗi ngày</small></div>
+            <div class="chips" id="t2-priority"><div class="chip" onclick="selectChip(this,'t2-priority');t2Enable()">Gần biển</div><div class="chip" onclick="selectChip(this,'t2-priority');t2Enable()">Nhiều điểm tham quan</div><div class="chip" onclick="selectChip(this,'t2-priority');t2Enable()">Thư giãn</div><div class="chip" onclick="selectChip(this,'t2-priority');t2Enable()">Ăn uống</div></div>
+            <div class="btn-row"><button class="btn btn-primary" id="t2-btn-4" disabled onclick="t2Finish()">Tạo lịch trình →</button></div>
+          </div>
+          <div class="screen" data-t2="5">
+            <div style="text-align:center;padding:40px 0">
+              <div style="font-size:2rem;margin-bottom:12px">⏳</div>
+              <p><strong>Đang tạo lịch trình Đà Nẵng...</strong></p>
+              <div class="progress-bar" style="margin-top:16px"><div class="progress-fill" style="width:65%;animation:pulse 1.5s infinite"></div></div>
+              <small style="color:var(--muted)">Đang tìm khách sạn & điểm tham quan...</small>
+              <div class="agency-label act" style="margin-top:12px">✅ Act: AI tự sắp xếp thứ tự điểm theo khoảng cách (dễ hoàn tác)</div>
+            </div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="go('t4')">Xem phương án →</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="rationale">
+        <h4>Design Rationale — T2 (10 câu)</h4>
+        <ul>
+          <li><strong>AI biết:</strong> Điểm đến = Đà Nẵng</li>
+          <li><strong>AI chưa biết:</strong> Số ngày, người đi, ngân sách, ưu tiên</li>
+          <li><strong>Giả định:</strong> 4 thông tin trên đủ để tạo lịch khả dụng</li>
+          <li><strong>Có thể sai:</strong> Act ngay → lịch lệch nhu cầu; hỏi quá nhiều → user bỏ dở</li>
+          <li><strong>Hậu quả:</strong> User phải sửa nhiều hoặc bỏ app — tốn thời gian chuyến đi</li>
+          <li><strong>Phát hiện/hoàn tác:</strong> Lịch nháp — sửa/hoàn tác dễ trước khi xác nhận</li>
+          <li><strong>Ask</strong> thu thập; <strong>Act</strong> chỉ sắp xếp route (rủi ro thấp)</li>
+          <li><strong>User kiểm soát:</strong> Chọn chip từng câu, có thể quay lại</li>
+          <li><strong>Feedback:</strong> Explicit system = progress + "vì sao cần"; implicit = chip thay form</li>
+          <li><strong>Tiếp tục mục tiêu:</strong> 4 câu tối đa → không mắc kẹt, vào chọn phương án</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- T4 MULTIPLE ITINERARIES -->
+  <section class="section" id="sec-t4">
+    <div class="section-header">
+      <h2>02b — T4: Nhiều lịch trình đều hợp lý</h2>
+      <p>Giai đoạn B — User hiểu còn phương án khác, không chỉ 1 "tối ưu"</p>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-status">🗺️ 3 phương án · Đà Nẵng 3N2Đ</div>
+        <div class="phone-body">
+          <div class="ai-msg">Cùng chuyến đi có nhiều cách sắp xếp hợp lý. <strong>Đây không phải lựa chọn duy nhất.</strong><small class="agency-label ask">Ask: Bạn chọn phương án — AI không tự quyết</small></div>
+          <div class="card" onclick="selectItinerary(this,'relax')">
+            <h4>🌿 Nghỉ dưỡng</h4>
+            <p>2 điểm/ngày · Nhiều thời gian biển · <span class="label-inference">AI đề xuất</span></p>
+          </div>
+          <div class="card selected" onclick="selectItinerary(this,'explore')">
+            <h4>🏛️ Khám phá</h4>
+            <p>4 điểm/ngày · Bà Nà, Ngũ Hành Sơn · <span class="label-inference">AI đề xuất</span></p>
+          </div>
+          <div class="card" onclick="selectItinerary(this,'budget')">
+            <h4>💰 Tiết kiệm</h4>
+            <p>Điểm miễn phí · KS &lt;800K · <span class="label-inference">AI đề xuất</span></p>
+          </div>
+          <span class="implicit-badge" title="Implicit system: 3 card ngang nhau = không có 'mặc định tốt nhất'">📍 Implicit UI: các phương án visual weight bằng nhau</span>
+          <div class="btn-row"><button class="btn btn-primary" onclick="go('treview')">Chọn & xem chi tiết →</button></div>
+        </div>
+      </div>
+      <div class="rationale">
+        <h4>Design Rationale — T4 (10 câu)</h4>
+        <ul>
+          <li><strong>AI biết:</strong> 3N2Đ, ưu tiên từ T2, nhiều combo điểm hợp lý</li>
+          <li><strong>AI chưa biết:</strong> User thích nhịp chậm hay nhanh thật sự</li>
+          <li><strong>Giả định:</strong> "Khám phá" phù hợp đa số — có thể sai với user muốn nghỉ</li>
+          <li><strong>Có thể sai:</strong> Chỉ show 1 lịch → user tưởng đó là tối ưu duy nhất</li>
+          <li><strong>Hậu quả:</strong> Chọn nhịp không phù hợp → mệt hoặc thiếu trải nghiệm</li>
+          <li><strong>Phát hiện/hoàn tác:</strong> Dễ — chưa xác nhận, đổi phương án 1 click</li>
+          <li><strong>Ask:</strong> User chọn — AI không auto-pick</li>
+          <li><strong>User kiểm soát:</strong> So sánh 3 card, chọn 1</li>
+          <li><strong>Feedback:</strong> Chọn card = explicit; hover nhiều card = implicit (đang cân nhắc)</li>
+          <li><strong>Tiếp tục mục tiêu:</strong> Chọn xong → review chi tiết trước khi khóa</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- T REVIEW - STAGE C -->
+  <section class="section" id="sec-treview">
+    <div class="section-header">
+      <h2>03 — Review lịch trình (Giai đoạn C)</h2>
+      <p>Dữ liệu vs đề xuất · Nháp · Chấp nhận / Từ chối / Hoàn tác</p>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-status">📋 Review · Đà Nẵng 3N2Đ <span class="label-draft" id="review-status">BẢN NHÁP</span></div>
+        <div class="phone-body" id="treview-body">
+          <div class="screen active" data-treview="0">
+            <p style="font-weight:600;margin-bottom:10px">Ngày 1 — Thứ Sáu</p>
+            <div class="timeline-item"><div class="timeline-time">14:00</div><div>Check-in KS <span class="label-fact">📊 Dữ liệu</span><br><small style="color:var(--muted)">Mường Thanh · 1.2M/đêm · Booking.com</small></div></div>
+            <div class="timeline-item"><div class="timeline-time">17:00</div><div>Biển Mỹ Khê <span class="label-inference">💡 AI đề xuất</span><br><small style="color:var(--muted)">Gần KS 800m · phù hợp ưu tiên biển</small></div></div>
+            <div class="timeline-item"><div class="timeline-time">19:30</div><div>Mì Quảng 1A <span class="label-inference">💡 AI đề xuất</span></div></div>
+            <div class="ai-msg" style="font-size:0.8rem">⚠️ Một số mục là <strong>đề xuất AI</strong>, chưa phải đặt chỗ thật. Kiểm tra trước khi xác nhận.</div>
+            <div class="btn-row">
+              <button class="btn btn-outline" onclick="showToast('Đã hoàn tác — quay lại chọn phương án')">↩ Hoàn tác</button>
+              <button class="btn btn-success" onclick="treviewConfirm()">Chấp nhận lịch →</button>
+              <button class="btn btn-danger" onclick="showToast('Đã từ chối — quay lại T4')">Từ chối</button>
+            </div>
+          </div>
+          <div class="screen" data-treview="1">
+            <div style="text-align:center;padding:24px 0">
+              <div style="font-size:2rem">✅</div>
+              <p style="margin-top:12px"><strong>Lịch trình đã xác nhận</strong></p>
+              <span class="label-confirmed">ĐÃ LƯU — không còn nháp</span>
+            </div>
+            <div class="ai-msg">Bước tiếp: chọn khách sạn và kiểm tra từng điểm.<small>Đã ghi nhớ style "Khám phá" cho lần sau</small></div>
+            <div class="btn-row">
+              <button class="btn btn-outline" onclick="treviewUndo()">↩ Hoàn tác xác nhận</button>
+              <button class="btn btn-primary" onclick="go('t3')">Chọn khách sạn →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="rationale">
+        <h4>Design Rationale — Review (10 câu)</h4>
+        <ul>
+          <li><strong>AI biết:</strong> Phương án đã chọn, giá KS từ nguồn, khoảng cách</li>
+          <li><strong>AI chưa biết:</strong> User có thực sự muốn từng điểm không</li>
+          <li><strong>Giả định:</strong> Thứ tự trong ngày tối ưu thời gian di chuyển</li>
+          <li><strong>Có thể sai:</strong> Điểm AI gợi ý không hợp gu; nhầm nháp vs đã đặt</li>
+          <li><strong>Hậu quả:</strong> Xác nhận nhầm → phải sửa nhiều ngày sau</li>
+          <li><strong>Phát hiện/hoàn tác:</strong> Nhãn nháp + nút Hoàn tác trước khi khóa</li>
+          <li><strong>Ask:</strong> Xác nhận trước khi chuyển sang đặt dịch vụ</li>
+          <li><strong>User kiểm soát:</strong> Chấp nhận / Từ chối / Hoàn tác; phân biệt 📊 vs 💡</li>
+          <li><strong>Feedback:</strong> Chấp nhận = explicit positive; hoàn tác = explicit reject</li>
+          <li><strong>Tiếp tục mục tiêu:</strong> Xác nhận → KS → recovery nếu lỗi → đặt phòng</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- T3 HOTELS -->
+  <section class="section" id="sec-t3">
+    <div class="section-header">
+      <h2>04 — T3: Tiêu chí khách sạn xung đột</h2>
+      <p>Explainability — "Vì sao gợi ý này?" + điều chỉnh tiêu chí</p>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-status">🏨 Gợi ý khách sạn · Đà Nẵng</div>
+        <div class="phone-body">
+          <div class="ai-msg">Dựa trên ưu tiên <strong>gần biển</strong> của bạn, đây là top 3:<small>Nguồn: Booking.com · Cập nhật 2 ngày trước · Bước tiếp: bạn chọn 1</small></div>
+          <div class="agency-label act">✅ Act: AI tự xếp hạng theo tiêu chí (user đổi slider → sắp lại)</div>
+          <div class="card selected" id="hotel-1">
+            <div style="display:flex;justify-content:space-between;align-items:start"><h4>🏆 Mường Thanh Luxury</h4><span class="badge badge-blue">Gần biển nhất</span></div>
+            <p>2.1km biển · ⭐ 4.5 · 1.2M/đêm</p>
+          </div>
+          <div class="card" id="hotel-2"><h4>Brilliant Hotel</h4><p>800m biển · ⭐ 4.7 · 1.8M/đêm <span class="badge badge-green">Đánh giá cao nhất</span></p></div>
+          <div class="card" id="hotel-3"><h4>Sanouva Hotel</h4><p>1.5km biển · ⭐ 4.2 · 650K/đêm <span class="badge badge-green">Rẻ nhất</span></p></div>
+          <button class="btn btn-secondary" style="width:100%;margin:8px 0" onclick="toggleExplain()">❓ Vì sao gợi ý này?</button>
+          <div class="explain-box" id="explain-box" style="display:none">
+            <strong>Tiêu chí AI đang dùng:</strong>
+            <div class="slider-row"><label>Gần biển <span id="v-beach">70%</span></label><input type="range" min="0" max="100" value="70" oninput="updateSlider('beach',this.value)"></div>
+            <div class="slider-row"><label>Giá rẻ <span id="v-price">15%</span></label><input type="range" min="0" max="100" value="15" oninput="updateSlider('price',this.value)"></div>
+            <div class="slider-row"><label>Đánh giá cao <span id="v-rating">15%</span></label><input type="range" min="0" max="100" value="15" oninput="updateSlider('rating',this.value)"></div>
+            <small style="color:var(--muted)">Điều chỉnh slider → AI sắp xếp lại ngay</small>
+            <span class="implicit-badge">📍 Implicit signal: kéo slider = ưu tiên đang đổi (không chắc AI sai)</span>
+          </div>
+          <div class="feedback-row">
+            <button class="feedback-btn" onclick="fbUp(this)">👍 Đúng ý</button>
+            <button class="feedback-btn" onclick="fbDown(this)">👎 Không phù hợp</button>
+          </div>
+          <div class="tag-picker" id="fb-tags">
+            <button class="tag-btn" onclick="this.classList.toggle('selected')">Sai ngân sách</button>
+            <button class="tag-btn" onclick="this.classList.toggle('selected')">Sai vị trí</button>
+            <button class="tag-btn" onclick="this.classList.toggle('selected')">Không thích KS này</button>
+          </div>
+          <p style="font-size:0.75rem;color:var(--muted);margin-top:8px">💬 Đánh giá giúp gợi ý phù hợp style chuyến đi của bạn — chỉ dùng cho bạn.</p>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="go('t6')">Chọn & xem lịch trình →</button>
+          </div>
+        </div>
+      </div>
+      <div class="rationale">
+        <h4>Design Rationale — T3 (10 câu)</h4>
+        <ul>
+          <li><strong>AI biết:</strong> 3 KS, giá, khoảng cách biển, rating từ Booking.com</li>
+          <li><strong>AI chưa biết:</strong> User có thực sự ưu tiên biển hơn giá</li>
+          <li><strong>Giả định:</strong> Gần biển = 70% trọng số (từ T0/T2)</li>
+          <li><strong>Có thể sai:</strong> Xếp KS đắt hơn dự kiến ngân sách</li>
+          <li><strong>Hậu quả:</strong> User chọn KS vượt budget — ảnh hưởng tài chính</li>
+          <li><strong>Phát hiện/hoàn tác:</strong> Dễ — slider + đổi KS trước khi đặt</li>
+          <li><strong>Act</strong> xếp hạng; <strong>Ask</strong> user chọn KS cuối cùng</li>
+          <li><strong>User kiểm soát:</strong> "Vì sao?", slider, 👍/👎 + tag</li>
+          <li><strong>Feedback:</strong> Tag "Sai ngân sách" = explicit; slider = implicit</li>
+          <li><strong>Tiếp tục mục tiêu:</strong> Chọn KS → xem lịch đầy đủ → sửa nếu dày</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- T6 PACKED SCHEDULE -->
+  <section class="section" id="sec-t6">
+    <div class="section-header">
+      <h2>05 — T6: Lịch trình quá dày</h2>
+      <p>Failure & Recovery — không dừng ở "không hữu ích"</p>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-status">📋 Lịch trình Đà Nẵng 3N2Đ</div>
+        <div class="phone-body" id="t6-body">
+          <div class="screen active" data-t6="0">
+            <p style="font-weight:600;margin-bottom:8px">Ngày 2 — Thứ Bảy <span class="badge badge-yellow">⚠️ Dày đặc</span></p>
+            <div class="timeline-item"><div class="timeline-time">07:00</div><div>Bà Nà Hills (di chuyển 1.5h)</div></div>
+            <div class="timeline-item warn"><div class="timeline-time">10:00</div><div>Cầu Vàng + Fantasy Park</div></div>
+            <div class="timeline-item warn"><div class="timeline-time">13:00</div><div>Ăn trưa + về (1.5h)</div></div>
+            <div class="timeline-item warn"><div class="timeline-time">15:30</div><div>Ngũ Hành Sơn</div></div>
+            <div class="timeline-item warn"><div class="timeline-time">17:30</div><div>Chợ Hàn</div></div>
+            <div class="timeline-item warn"><div class="timeline-time">19:00</div><div>Cầu Rồng phun lửa</div></div>
+            <small style="color:var(--yellow)">⏱ Di chuyển: ~4h · Không có giờ nghỉ</small>
+            <span class="implicit-badge">📍 Implicit signal: timeline vàng + badge "Dày đặc" = cảnh báo ngầm</span>
+            <div class="feedback-row">
+              <button class="feedback-btn" onclick="fbDown(this);document.getElementById('t6-tags').classList.add('show')">👎 Lịch không thực tế</button>
+            </div>
+            <div class="tag-picker show" id="t6-tags" style="display:none">
+              <button class="tag-btn selected">Quá nhiều điểm</button>
+              <button class="tag-btn">Di chuyển quá lâu</button>
+              <button class="tag-btn">Không có giờ nghỉ</button>
+            </div>
+            <div class="btn-row"><button class="btn btn-danger" onclick="t6Recover()">Báo vấn đề & sửa →</button></div>
+          </div>
+          <div class="screen" data-t6="1">
+            <div class="ai-msg">Tôi hiểu — <strong>Ngày 2 quá dày</strong> với 6 điểm và 4h di chuyển. Bạn muốn sửa thế nào?<small>✅ Đã ghi nhận: "Quá nhiều điểm" — dùng cho gợi ý lần sau</small></div>
+            <div class="card" onclick="t6Fix(this,'light')"><h4>🌿 Nhẹ ngày 2</h4><p>Bỏ Chợ Hàn, chỉ giữ Bà Nà + Cầu Rồng</p></div>
+            <div class="card" onclick="t6Fix(this,'split')"><h4>📅 Chia sang ngày 3</h4><p>Chuyển Ngũ Hành Sơn sang sáng ngày 3</p></div>
+            <div class="card" onclick="t6Fix(this,'relax')"><h4>😌 Thêm giờ nghỉ</h4><p>Thêm 2h nghỉ trưa tại KS</p></div>
+            <div class="btn-row"><button class="btn btn-success" onclick="t6Done()">Chấp nhận bản sửa →</button></div>
+          </div>
+          <div class="screen" data-t6="2">
+            <p style="font-weight:600;margin-bottom:10px">So sánh trước / sau sửa</p>
+            <div class="compare-grid">
+              <div class="compare-col">
+                <h5>❌ Trước</h5>
+                <div>6 điểm</div>
+                <div>Di chuyển ~4h</div>
+                <div>Không nghỉ</div>
+              </div>
+              <div class="compare-col after">
+                <h5>✅ Sau</h5>
+                <div>3 điểm</div>
+                <div>Di chuyển ~2.5h</div>
+                <div>Nghỉ trưa 2h</div>
+              </div>
+            </div>
+            <div class="ai-msg"><small>✅ Đã ghi nhớ: "Ưu tiên lịch nhẹ" — dùng cho gợi ý lần sau. Bạn có thể ↩ hoàn tác.</small></div>
+            <div class="btn-row">
+              <button class="btn btn-outline" onclick="t6Undo()">↩ Hoàn tác sửa</button>
+              <button class="btn btn-primary" onclick="go('t7')">Tiếp tục →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="rationale">
+        <h4>Design Rationale — T6 (10 câu)</h4>
+        <ul>
+          <li><strong>AI biết:</strong> Danh sách điểm, thời gian di chuyển ước tính</li>
+          <li><strong>AI chưa biết:</strong> Thể lực/sở thích nhịp đi thực tế của user</li>
+          <li><strong>Giả định:</strong> Nhiều điểm = trải nghiệm tốt hơn</li>
+          <li><strong>Có thể sai:</strong> 6 điểm/ngày không thực tế</li>
+          <li><strong>Hậu quả:</strong> User mệt, bỏ lỡ điểm — chuyến đi kém vui</li>
+          <li><strong>Phát hiện/hoàn tác:</strong> Timeline vàng + so sánh trước/sau + nút hoàn tác</li>
+          <li><strong>Ask:</strong> Đề xuất 3 cách sửa, user chọn</li>
+          <li><strong>User kiểm soát:</strong> Tag lỗi cụ thể, chọn recovery, hoàn tác</li>
+          <li><strong>Feedback:</strong> Tag explicit; scroll/dwell implicit (đánh dấu trên UI)</li>
+          <li><strong>Tiếp tục mục tiêu:</strong> Recovery loop đầy đủ → lịch khả dụng → tiếp T7</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- T7 OUTDATED -->
+  <section class="section" id="sec-t7">
+    <div class="section-header">
+      <h2>05 — T7: Thông tin lỗi thời</h2>
+      <p>Explainability + Recovery — độ tin cậy thấp</p>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-status">🍜 Gợi ý nhà hàng · Ngày 1 tối</div>
+        <div class="phone-body" id="t7-body">
+          <div class="screen active" data-t7="0">
+            <div class="card">
+              <h4>🍲 Mì Quảng Bà Mua</h4>
+              <p>Mở cửa: 06:00–21:00 · ~80K/người</p>
+              <span class="badge badge-red">⚠️ Cập nhật 8 tháng trước</span>
+              <span class="badge badge-yellow">Độ tin cậy: Thấp</span>
+            </div>
+            <div class="ai-msg">Tôi không chắc giờ mở cửa còn đúng. Bạn nên kiểm tra trước khi đến.<small>📊 Nguồn: Google Maps · Xác minh: 10/2025 · Bước tiếp: chọn thay thế hoặc bỏ qua</small></div>
+            <span class="implicit-badge">📍 Implicit UI: badge đỏ = độ tin thấp, không cần đọc chữ</span>
+            <div class="btn-row">
+              <button class="btn btn-outline" onclick="t7Alt()">Xem nhà hàng thay thế</button>
+              <button class="btn btn-secondary" onclick="showToast('Đã ghi nhận: bỏ qua gợi ý này')">Bỏ qua</button>
+            </div>
+          </div>
+          <div class="screen" data-t7="1">
+            <div class="ai-msg">Đã hiểu — bạn cần nhà hàng có <strong>dữ liệu mới hơn</strong>. Đây là thay thế:<small>✅ Ghi nhớ: ưu tiên nguồn cập nhật &lt; 1 tuần</small></div>
+            <p style="font-weight:600;margin-bottom:10px">Nhà hàng thay thế gần đó:</p>
+            <div class="card selected"><h4>🍜 Mì Quảng 1A</h4><p>450m · ⭐ 4.6 · <span class="badge badge-green">Cập nhật 3 ngày trước</span></p></div>
+            <div class="card"><h4>🦐 Hải sản Bé Mặn</h4><p>800m · ⭐ 4.4 · <span class="badge badge-green">Cập nhật 1 tuần trước</span></p></div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="go('t9')">Chọn & tiếp tục →</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="rationale">
+        <h4>Design Rationale — T7 (10 câu)</h4>
+        <ul>
+          <li><strong>AI biết:</strong> Tên NH, giá/giờ từ nguồn cũ (10/2025)</li>
+          <li><strong>AI chưa biết:</strong> Giờ mở cửa hiện tại — không chắc chắn</li>
+          <li><strong>Giả định:</strong> Dữ liệu 8 tháng vẫn đúng</li>
+          <li><strong>Có thể sai:</strong> NH đóng cửa hoặc đổi giờ</li>
+          <li><strong>Hậu quả:</strong> Đến nơi trống — hỏng buổi tối</li>
+          <li><strong>Phát hiện/hoàn tác:</strong> Badge độ tin + user chủ động kiểm tra</li>
+          <li><strong>Don't Act:</strong> Không tự đổi NH — user chọn thay thế</li>
+          <li><strong>User kiểm soát:</strong> Xem nguồn, chọn thay thế, bỏ qua</li>
+          <li><strong>Feedback:</strong> Bỏ qua = explicit; không click = implicit (chưa quan tâm)</li>
+          <li><strong>Tiếp tục mục tiêu:</strong> Recovery → NH mới → tiếp đặt phòng</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- T9 BOOKING -->
+  <section class="section" id="sec-t9">
+    <div class="section-header">
+      <h2>06 — T9: Đặt dịch vụ — Act / Ask / Don't Act</h2>
+      <p>Agency design — ranh giới rõ ràng</p>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-status">🏨 Đặt phòng · Mường Thanh Luxury</div>
+        <div class="phone-body" id="t9-body">
+          <div class="screen active" data-t9="0">
+            <div class="card"><h4>Mường Thanh Luxury</h4><p>3N2Đ · 1.2M/đêm · Tổng ~3.6M</p></div>
+            <div class="ai-msg"><strong>Tôi đã tóm tắt lựa chọn của bạn.</strong> Bước tiếp theo cần bạn xác nhận.<small class="act">✅ Act: Tóm tắt (rủi ro thấp)</small></div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="t9Form()">Điền thông tin đặt phòng →</button></div>
+          </div>
+          <div class="screen" data-t9="1">
+            <p style="font-weight:600;margin-bottom:10px">Thông tin đặt phòng</p>
+            <div class="card" style="margin-bottom:8px"><small style="color:var(--muted)">Họ tên (AI điền sẵn)</small><p>Nguyễn Văn A</p></div>
+            <div class="card" style="margin-bottom:8px"><small style="color:var(--muted)">SĐT</small><p>0901 xxx xxx</p></div>
+            <div class="ai-msg"><small class="ask">⚠️ Ask: Cần bạn xác nhận trước khi gửi yêu cầu đặt</small></div>
+            <div class="btn-row">
+              <button class="btn btn-outline" onclick="showToast('Đã lưu draft — chưa gửi đặt phòng')">Lưu draft</button>
+              <button class="btn btn-primary" onclick="t9Pay()">Xác nhận đặt phòng →</button>
+            </div>
+          </div>
+          <div class="screen" data-t9="2">
+            <div style="text-align:center;padding:24px 0">
+              <div style="font-size:2.5rem">🔒</div>
+              <h3 style="margin:12px 0">Thanh toán</h3>
+              <p style="color:var(--muted);font-size:0.9rem">TripMind <strong>không thể</strong> thanh toán thay bạn.</p>
+            </div>
+            <div class="ai-msg"><small class="dont">🚫 Don't Act: Thanh toán — rủi ro cao, không hoàn tác dễ</small></div>
+            <p style="font-size:0.85rem;margin:12px 0">Bạn sẽ được chuyển sang <strong>Booking.com</strong> để hoàn tất thanh toán an toàn.</p>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="showToast('Chuyển sang Booking.com...')">Mở Booking.com →</button>
+              <button class="btn btn-outline" onclick="showScreen('t9','1')">← Quay lại</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="rationale">
+        <h4>Act / Ask / Don't Act + Rationale — T9</h4>
+        <table class="agency-table">
+          <tr><th>Hành động</th><th>Mức</th></tr>
+          <tr><td>Tóm tắt lựa chọn</td><td class="act">Act</td></tr>
+          <tr><td>Điền form (cần xác nhận)</td><td class="ask">Ask</td></tr>
+          <tr><td>Thanh toán</td><td class="dont">Don't Act</td></tr>
+          <tr><td>Hủy booking</td><td class="dont">Don't Act</td></tr>
+        </table>
+        <ul style="margin-top:12px;font-size:0.85rem;list-style:none">
+          <li>→ <strong>Hậu quả sai:</strong> Charge nhầm — khó hoàn tiền</li>
+          <li>→ <strong>Lập luận:</strong> "Chi phí cao + khó hoàn tác → Don't Act thanh toán"</li>
+          <li>→ <strong>Hoàn tác:</strong> Lưu draft, quay lại form bất cứ lúc nào</li>
+        </ul>
+        <span class="implicit-badge" style="margin-top:8px">📍 Implicit: nút "Lưu draft" outline nổi hơn "Xác nhận"</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEEDBACK MATRIX -->
+  <section class="section" id="sec-feedback">
+    <div class="section-header">
+      <h2>05 — Ma trận Feedback 2×2</h2>
+      <p>User ↔ System × Explicit ↔ Implicit</p>
+    </div>
+    <div class="matrix">
+      <div class="matrix-cell user-explicit">
+        <h4>👤 User → System · Explicit</h4>
+        <p style="font-size:0.8rem;margin-bottom:6px"><strong>Ví dụ:</strong> 👍/👎 + tag · Tag lịch dày · Lưu draft</p>
+        <dl class="matrix-detail">
+          <dt>Thời điểm?</dt><dd>Sau gợi ý KS, sau xem lịch, trước thanh toán</dd>
+          <dt>Mục tiêu?</dt><dd>AI biết đúng/sai cụ thể, không chỉ "không thích"</dd>
+          <dt>Vì sao explicit?</dt><dd>Chi phí sai cao — cần tín hiệu rõ, không đoán</dd>
+          <dt>Ý nghĩa khác?</dt><dd>👎 có thể vì style, không phải logic sai</dd>
+          <dt>Phản ứng ngay?</dt><dd>Điều slider, đề xuất 3 cách sửa, lưu draft</dd>
+          <dt>Cá nhân hoá?</dt><dd>Có — ghi nhớ tag cho session/lần sau</dd>
+          <dt>User kiểm soát?</dt><dd>Có — copy minh bạch "chỉ dùng cho bạn"</dd>
+          <dt>Gián đoạn?</dt><dd>Không — inline tại điểm dừng tự nhiên</dd>
+        </dl>
+      </div>
+      <div class="matrix-cell user-implicit">
+        <h4>👤 User → System · Implicit</h4>
+        <p style="font-size:0.8rem;margin-bottom:6px"><strong>Ví dụ:</strong> Scroll ngày dày · Kéo slider · Bỏ dở form</p>
+        <dl class="matrix-detail">
+          <dt>Thời điểm?</dt><dd>Khi xem timeline, điều chỉnh slider, thoát form đặt</dd>
+          <dt>Mục tiêu?</dt><dd>Gợi ý hệ thống khi user chưa muốn feedback explicit</dd>
+          <dt>Vì sao implicit?</dt><dd>Giảm friction — không hỏi liên tục</dd>
+          <dt>Ý nghĩa khác?</dt><dd>Scroll ≠ chắc thấy dày; bỏ dở ≠ KS xấu</dd>
+          <dt>Phản ứng ngay?</dt><dd>Chỉ gợi ý — không tự sửa lịch</dd>
+          <dt>Cá nhân hoá?</dt><dd>Có thể — với ngưỡng tin cậy, không auto-label</dd>
+          <dt>User kiểm soát?</dt><dd>Cài đặt tắt thu thập hành vi</dd>
+          <dt>Gián đoạn?</dt><dd>Không — quan sát ngầm</dd>
+        </dl>
+      </div>
+      <div class="matrix-cell sys-explicit">
+        <h4>⚙️ System → User · Explicit</h4>
+        <p style="font-size:0.8rem;margin-bottom:6px"><strong>Ví dụ:</strong> Progress 65% · "Vì sao?" · Badge lỗi thời</p>
+        <dl class="matrix-detail">
+          <dt>Thời điểm?</dt><dd>Khi AI xử lý, sau gợi ý, khi độ tin thấp</dd>
+          <dt>Mục tiêu?</dt><dd>User biết AI đang làm gì, giới hạn, bước tiếp</dd>
+          <dt>Vì sao explicit?</dt><dd>Task phức tạp — cần minh bạch tránh "treo"</dd>
+          <dt>Ý nghĩa khác?</dt><dd>Delay lâu = có thể mạng chậm, không chỉ AI suy luận</dd>
+          <dt>Phản ứng ngay?</dt><dd>Hiển thị % + hành động tiếp (chọn, kiểm tra)</dd>
+          <dt>Cá nhân hoá?</dt><dd>Không — thông tin trạng thái chung</dd>
+          <dt>User kiểm soát?</dt><dd>User quyết định tin hay không tin nguồn</dd>
+          <dt>Gián đoạn?</dt><dd>Vừa đủ — không che UI chính</dd>
+        </dl>
+      </div>
+      <div class="matrix-cell sys-implicit">
+        <h4>⚙️ System → User · Implicit</h4>
+        <p style="font-size:0.8rem;margin-bottom:6px"><strong>Ví dụ:</strong> Timeline vàng · Chip thay form · Nút draft nổi hơn</p>
+        <dl class="matrix-detail">
+          <dt>Thời điểm?</dt><dd>Luôn hiện trong layout — trước khi AI nói</dd>
+          <dt>Mục tiêu?</dt><dd>User tự hiểu mental model, giảm cần hướng dẫn</dd>
+          <dt>Vì sao implicit?</dt><dd>Progressive disclosure — cue nhẹ trước, chữ sau</dd>
+          <dt>Ý nghĩa khác?</dt><dd>Vàng có thể là highlight, không chỉ cảnh báo</dd>
+          <dt>Phản ứng ngay?</dt><dd>User tự điều chỉnh hành vi (chậm lại, đọc kỹ)</dd>
+          <dt>Cá nhân hoá?</dt><dd>Không</dd>
+          <dt>User kiểm soát?</dt><dd>Học qua dùng — không cần setting</dd>
+          <dt>Gián đoạn?</dt><dd>Không — nền tảng UX</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="rationale" style="margin-top:20px;max-width:900px">
+      <h4>Nguyên tắc feedback áp dụng</h4>
+      <ul>
+        <li><strong>Make it easy:</strong> 👍/👎 + tag inline, 1 click</li>
+        <li><strong>Động lực:</strong> "Cải thiện gợi ý cho chuyến đi của bạn"</li>
+        <li><strong>Minh bạch:</strong> "Chỉ dùng cho bạn, không chia sẻ"</li>
+        <li><strong>Không gián đoạn:</strong> Feedback tại điểm dừng tự nhiên (sau gợi ý, sau xem lịch)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- RATIONALE -->
+  <section class="section" id="sec-rationale">
+    <div class="section-header">
+      <h2>06 — Design Rationale tổng hợp</h2>
+      <p>Trả lời: AI biết gì? Sai ở đâu? User kiểm soát thế nào?</p>
+    </div>
+    <table class="agency-table" style="max-width:900px">
+      <tr><th>Câu hỏi</th><th>Thiết kế TripMind trả lời</th></tr>
+      <tr><td>AI biết gì?</td><td>Điểm đến, 4 thông tin từ T2, tiêu chí slider T3</td></tr>
+      <tr><td>AI chưa biết gì?</td><td>Giờ mở cửa realtime, ý định thật nếu user không nói</td></tr>
+      <tr><td>AI có thể sai ở đâu?</td><td>Lịch quá dày (T6), info lỗi thời (T7), ưu tiên KS sai (T3)</td></tr>
+      <tr><td>AI được Act tới đâu?</td><td>Gợi ý, tóm tắt — không thanh toán/hủy booking</td></tr>
+      <tr><td>User kiểm soát?</td><td>Chọn chip, slider, tag lỗi, chọn recovery, xác nhận đặt phòng</td></tr>
+      <tr><td>Khi lỗi, tiếp tục mục tiêu?</td><td>T6: 3 cách sửa · T7: thay thế · không dừng ở báo lỗi</td></tr>
+      <tr><td>Feedback hai chiều?</td><td>Ma trận 2×2 đủ 4 ô + rationale 8 câu/ô trong prototype</td></tr>
+      <tr><td>Giai đoạn C?</td><td>Review lịch trình: 📊 dữ liệu vs 💡 đề xuất, nháp, hoàn tác</td></tr>
+      <tr><td>T4?</td><td>3 phương án — user không tưởng chỉ có 1 lựa chọn tối ưu</td></tr>
+    </table>
+    <div class="rationale" style="margin-top:20px;max-width:900px">
+      <h4>Rủi ro còn lại</h4>
+      <ul>
+        <li>Implicit signal (scroll) có thể hiểu sai → chỉ gợi ý, không tự sửa</li>
+        <li>User có thể bỏ qua cảnh báo độ tin cậy thấp</li>
+        <li>Dữ liệu phụ thuộc nguồn bên thứ ba</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Navigation
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => go(btn.dataset.section));
+  });
+
+  function go(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    const sec = document.getElementById('sec-' + id);
+    if (sec) sec.classList.add('active');
+    const nav = document.querySelector(`[data-section="${id}"]`);
+    if (nav) nav.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // Chip select
+  function selectChip(el, groupId) {
+    document.querySelectorAll('#' + groupId + ' .chip').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  // T0
+  let t0Step = 0;
+  function showT0(n) {
+    document.querySelectorAll('[data-t0]').forEach(s => s.classList.remove('active'));
+    const s = document.querySelector(`[data-t0="${n}"]`);
+    if (s) s.classList.add('active');
+    t0Step = n;
+  }
+  function t0Next() { showT0(t0Step + 1); }
+  function t0Prev() { showT0(t0Step - 1); }
+  function t0SkipPerm() { showToast('Không chia sẻ quyền — AI gợi ý chung hơn'); showT0(3); }
+  function t0Finish() { go('t2'); showToast('Onboarding hoàn tất — bắt đầu lập kế hoạch'); }
+
+  // T4
+  function selectItinerary(el) {
+    document.querySelectorAll('#sec-t4 .card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  // T Review
+  function showTreview(n) {
+    document.querySelectorAll('[data-treview]').forEach(s => s.classList.remove('active'));
+    const s = document.querySelector(`[data-treview="${n}"]`);
+    if (s) s.classList.add('active');
+  }
+  function treviewConfirm() {
+    document.getElementById('review-status').textContent = 'ĐÃ XÁC NHẬN';
+    document.getElementById('review-status').className = 'label-confirmed';
+    showTreview(1);
+    showToast('Lịch trình đã xác nhận — không còn nháp');
+  }
+  function treviewUndo() {
+    document.getElementById('review-status').textContent = 'BẢN NHÁP';
+    document.getElementById('review-status').className = 'label-draft';
+    showTreview(0);
+    showToast('Đã hoàn tác — quay về bản nháp');
+  }
+
+  // T2
+  let t2Step = 0;
+  function showT2(n) {
+    document.querySelectorAll('[data-t2]').forEach(s => s.classList.remove('active'));
+    const s = document.querySelector(`[data-t2="${n}"]`);
+    if (s) s.classList.add('active');
+    t2Step = n;
+    const pct = n === 0 ? 0 : n === 5 ? 100 : (n / 4) * 100;
+    document.getElementById('t2-progress').style.width = pct + '%';
+    document.getElementById('t2-step-label').textContent = n === 0 ? 'Bước 0/4' : n === 5 ? 'Hoàn tất' : `Bước ${n}/4`;
+  }
+  function t2Next() { showT2(t2Step + 1); }
+  function t2Enable() {
+    const btn = document.getElementById('t2-btn-' + t2Step);
+    if (btn) btn.disabled = false;
+  }
+  function t2Finish() { showT2(5); }
+
+  // T3
+  function toggleExplain() {
+    const box = document.getElementById('explain-box');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  }
+  function updateSlider(name, val) {
+    document.getElementById('v-' + name).textContent = val + '%';
+    showToast('Đang sắp xếp lại theo tiêu chí mới...');
+  }
+  function fbUp(btn) {
+    btn.classList.add('active-up');
+    btn.parentElement.querySelector('.active-down')?.classList.remove('active-down');
+    document.getElementById('fb-tags').classList.remove('show');
+  }
+  function fbDown(btn) {
+    btn.classList.add('active-down');
+    btn.parentElement.querySelector('.active-up')?.classList.remove('active-up');
+    document.getElementById('fb-tags').classList.add('show');
+  }
+
+  // T6
+  function showT6(n) {
+    document.querySelectorAll('[data-t6]').forEach(s => s.classList.remove('active'));
+    const s = document.querySelector(`[data-t6="${n}"]`);
+    if (s) s.classList.add('active');
+  }
+  function t6Recover() {
+    document.getElementById('t6-tags').style.display = 'flex';
+    showT6(1);
+  }
+  function t6Fix(el, type) {
+    document.querySelectorAll('#t6-body .card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+  function t6Done() { showT6(2); showToast('Đã cập nhật — xem so sánh trước/sau'); }
+  function t6Undo() { showT6(0); showToast('Đã hoàn tác — quay lại lịch cũ'); }
+
+  // T7
+  function showT7(n) {
+    document.querySelectorAll('[data-t7]').forEach(s => s.classList.remove('active'));
+    const s = document.querySelector(`[data-t7="${n}"]`);
+    if (s) s.classList.add('active');
+  }
+  function t7Alt() { showT7(1); }
+
+  // T9
+  function showT9(n) {
+    document.querySelectorAll('[data-t9]').forEach(s => s.classList.remove('active'));
+    const s = document.querySelector(`[data-t9="${n}"]`);
+    if (s) s.classList.add('active');
+  }
+  function showScreen(flow, n) {
+    if (flow === 't9') showT9(parseInt(n));
+  }
+  function t9Form() { showT9(1); }
+  function t9Pay() { showT9(2); }
+</script>
+</body>
+</html>
