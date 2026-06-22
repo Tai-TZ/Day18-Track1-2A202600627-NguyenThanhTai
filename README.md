@@ -13,14 +13,11 @@
 
 | Cách mở | Liên kết |
 |---------|----------|
-| **Prototype (khuyến nghị)** | [**Mở `index.html`**](Lab%20v%E1%BB%81%20nh%C3%A0/prototype/index.html) |
+| **Prototype công khai (khuyến nghị)** | [**Mở TripMind AI trên GitHub Pages**](https://tai-tz.github.io/Day18-Track1-2A202600627-NguyenThanhTai/Lab%20v%E1%BB%81%20nh%C3%A0/prototype/index.html) |
+| Trong repo GitHub | [`index.html`](Lab%20v%E1%BB%81%20nh%C3%A0/prototype/index.html) |
 | Tài liệu thiết kế (tham khảo) | [`LAB-AI-Travel-Planner.md`](Lab%20v%E1%BB%81%20nh%C3%A0/prototype/LAB-AI-Travel-Planner.md) |
 
-**Nếu link trên GitHub chỉ hiện mã nguồn:** tải repo về, mở file `Lab về nhà/prototype/index.html` bằng trình duyệt (Chrome / Edge).
-
-**Sau khi bật GitHub Pages** (nếu có), prototype công khai tại:
-
-`https://tai-tz.github.io/Day18-Track1-2A202600627-NguyenThanhTai/Lab%20v%E1%BB%81%20nh%C3%A0/prototype/index.html`
+**Repository:** https://github.com/Tai-TZ/Day18-Track1-2A202600627-NguyenThanhTai
 
 ---
 
